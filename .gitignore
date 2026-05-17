@@ -1,0 +1,26 @@
+# Databases & Secrets
+.env
+*.env
+
+# Local-only text files
+*.txt
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*.log
+
+# Build outputs
+dist/
+build/
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.swp

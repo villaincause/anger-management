@@ -1,0 +1,433 @@
+/* --- 1. Top Header & User Stats --- */
+.home-header {
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: flex-end;
+    position: relative;
+}
+
+.user-stats {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    z-index: 100;
+    text-align: center;
+    background: #fdf5e6;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 3px solid #4A2C2A;
+    box-shadow: 0 4px 0 #4A2C2A;
+}
+
+#logged-in-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #4A2C2A;
+    font-weight: bold;
+}
+
+#display-username {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #4A2C2A; 
+    margin-bottom: 2px;
+}
+
+#display-record {
+    font-size: 0.8rem;
+    color: #8b4513; 
+    margin-bottom: 8px;
+}
+
+.text-link {
+    background: #8b0000;
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 0 #5a0000;
+}
+
+.text-link:hover {
+    background: #a52a2a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 #5a0000;
+}
+
+/* --- 2. Scoreboard --- */
+.scoreboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 20px;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #4A2C2A;
+    z-index: 10;
+}
+
+.score-box {
+    background: #FFF;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* --- 3. Battle Arena --- */
+.arena-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5%;
+    height: 55vh;
+    margin-top: 20px;
+}
+
+.fighter-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 40%;
+    transition: all 0.3s ease;
+}
+
+.fighter-side.right {
+    transform: scaleX(-1);
+}
+
+.fighter-side.right .stats-container,
+.fighter-side.right .state-label {
+    transform: scaleX(-1);
+}
+
+.hand-wrapper {
+    perspective: 1000px;
+    overflow: visible !important; 
+}
+
+.hand-wrapper img {
+    width: 320px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+}
+
+/* --- 4. State Labels & Stats --- */
+.state-label {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #4A2C2A;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 0px white;
+}
+
+.stats-container {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 15px 20px;
+    border-radius: 20px;
+    width: 280px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.bar-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #4A2C2A;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
+}
+
+.progress-container {
+    width: 100%;
+    height: 12px;
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease-in-out;
+}
+
+.progress-bar.anger { background-color: #ff4d4d; }
+.progress-bar.satisfaction { background-color: #4dff88; }
+.progress-bar.confidence { background-color: #4db8ff; }
+
+/* --- 5. Announcer Text --- */
+.announcer {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #FF4500; 
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 5px;
+    min-height: 2.2rem;
+    text-shadow: 2px 2px 0px #FFF, 4px 4px 0px rgba(0,0,0,0.1);
+    z-index: 20;
+    pointer-events: none;
+}
+
+/* --- 6. Control Center (Bottom) --- */
+.controls-center {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.control-group {
+    display: flex;
+    gap: 25px;
+    padding: 15px 30px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 60px;
+    backdrop-filter: blur(5px);
+}
+
+.move-btn, .action-btn {
+    width: 100px;
+    height: 100px;
+    background: white;
+    border: 5px solid #4A2C2A;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 6px 0 #4A2C2A;
+}
+
+.move-btn img, .action-btn img {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+}
+
+.move-btn:hover, .action-btn:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 16px 0 #4A2C2A;
+}
+
+.move-btn:active, .action-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #4A2C2A;
+}
+
+.secondary-btn {
+    margin-top: 10px;
+    padding: 10px 25px;
+    background: #4A2C2A;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- 7. Clash & Hit Animations --- */
+.clash-p1 { animation: punchP1 0.4s ease-out; }
+.clash-p2 { animation: punchP2 0.4s ease-out; }
+
+.action-hit {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    filter: sepia(1) saturate(5) hue-rotate(-50deg); 
+}
+
+@keyframes punchP1 {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(150px) rotate(15deg); } 
+    100% { transform: translateX(0); }
+}
+
+@keyframes punchP2 {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(150px) rotate(15deg); } 
+    100% { transform: translateX(0); }
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(4px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+    40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+
+/* =============================================
+   MOBILE RESPONSIVE — game.css
+   max-width: 480px (portrait phones)
+   ============================================= */
+@media (max-width: 480px) {
+
+    /* Scoreboard: smaller score numbers */
+    .scoreboard {
+        gap: 12px;
+        padding: 10px 8px;
+        font-size: 1.5rem;
+    }
+
+    .score-box {
+        padding: 6px 14px;
+        min-width: 40px;
+        border-radius: 8px;
+    }
+
+    /* User stats badge: smaller & tighter */
+    .user-stats {
+        padding: 7px 12px;
+        border-radius: 8px;
+        border-width: 2px;
+        box-shadow: 0 2px 0 #4A2C2A;
+        top: 6px;
+        right: 8px;
+    }
+
+    #display-username {
+        font-size: 0.8rem;
+    }
+
+    #display-record {
+        font-size: 0.65rem;
+        margin-bottom: 5px;
+    }
+
+    .text-link {
+        padding: 3px 10px;
+        font-size: 0.6rem;
+    }
+
+    /* Arena: centered alignment */
+    .arena-container {
+        height: auto;
+        margin-top: 100px;
+        padding: 0 2%;
+        align-items: center;
+    }
+
+    /* Stats panels: much narrower, with breathing room below */
+    .stats-container {
+        width: 140px;
+        padding: 8px 10px;
+        gap: 6px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+
+    .state-label {
+        font-size: 0.72rem;
+        margin-bottom: 2px;
+    }
+
+    .bar-label {
+        font-size: 0.58rem;
+    }
+
+    .progress-container {
+        height: 7px;
+    }
+
+    /* Fighter: stack stats above hand, centered */
+    .fighter-side {
+        gap: 4px;
+        width: 48%;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Hands: push down away from stats */
+    .hand-wrapper {
+        margin-top: 20px;
+    }
+
+    .hand-wrapper img {
+        width: 150px;
+    }
+
+    /* Stats: push down away from state label */
+    .stats-container {
+        margin-bottom: 0;
+    }
+
+    /* Announcer: smaller text, fits on mobile */
+    .announcer {
+        font-size: 1rem;
+        min-height: 1.2rem;
+        padding: 0 10px;
+        margin-bottom: 2px;
+        text-shadow: 1px 1px 0px #FFF, 2px 2px 0px rgba(0,0,0,0.1);
+    }
+
+    /* Controls: push up closer to hands */
+    .controls-center {
+        bottom: 2%;
+        gap: 6px;
+    }
+
+    .control-group {
+        gap: 12px;
+        padding: 10px 16px;
+        border-radius: 50px;
+    }
+
+    .move-btn, .action-btn {
+        width: 64px;
+        height: 64px;
+        border-width: 3px;
+        box-shadow: 0 4px 0 #4A2C2A;
+    }
+
+    .move-btn img, .action-btn img {
+        width: 55%;
+        height: 55%;
+    }
+
+    .move-btn:hover, .action-btn:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 10px 0 #4A2C2A;
+    }
+
+    .secondary-btn {
+        padding: 8px 18px;
+        font-size: 0.85rem;
+        margin-top: 6px;
+    }
+}

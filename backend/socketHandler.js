@@ -1,0 +1,380 @@
+/**
+ * socketHandler.js - The Multiplayer & CPU Engine
+ */
+
+const { getRoundResult, calculateStateChange, getStatDeltas } = require('./logic/gameLogic');
+const { getCPUMove, getCPUAction } = require('./logic/aiLogic');
+const PlayerModel = require('./models/playerModel');
+const pool = require('./db');
+
+const activeGames = new Map();
+const waitingPlayers = []; 
+const friendRooms = new Map(); 
+
+const clamp = (val) => Math.max(0, Math.min(100, Math.round(val || 0)));
+
+/**
+ * Helper to sync fresh DB stats (wins/losses) to the client
+ */
+async function syncPlayerStats(ws, userId) {
+    if (!userId || userId === 1 || !ws || ws.readyState !== 1) return;
+    try {
+        const [rows] = await pool.query('SELECT wins, losses FROM players WHERE player_id = ?', [userId]);
+        if (rows.length > 0) {
+            ws.send(JSON.stringify({ 
+                type: 'UPDATE_STATS', 
+                payload: { wins: rows[0].wins, losses: rows[0].losses } 
+            }));
+        }
+    } catch (err) {
+        console.error("Stats Sync Error:", err);
+    }
+}
+
+function handleSocketConnection(ws) {
+    console.log('New client connected');
+
+    ws.on('message', async (message) => {
+        try {
+            const data = JSON.parse(message);
+            const { type, payload } = data;
+
+            switch (type) {
+                case 'REGISTER':
+                    handleAuth(ws, payload, 'register');
+                    break;
+                case 'LOGIN':
+                    handleAuth(ws, payload, 'login');
+                    break;
+                case 'START_GAME':
+                    handleStartGame(ws, payload);
+                    break;
+                case 'LEAVE_QUEUE':
+                    handleLeaveQueue(ws, payload);
+                    break;
+                case 'SUBMIT_MOVE':
+                    handlePlayerMove(ws, payload);
+                    break;
+                case 'SUBMIT_ACTION':
+                    handlePlayerAction(ws, payload);
+                    break;
+                case 'GIVE_UP':
+                    handleGameOver(ws, 'forfeit', activeGames.get(payload.gameId));
+                    break;
+                case 'VERIFY_SESSION':
+                    handleVerifySession(ws, payload);
+                    break;
+            }
+        } catch (err) {
+            console.error('Error processing message:', err);
+        }
+    });
+
+    ws.on('close', () => {
+        const idx = waitingPlayers.findIndex(p => p.ws === ws);
+        if (idx !== -1) waitingPlayers.splice(idx, 1);
+        
+        for (const [code, host] of friendRooms.entries()) {
+            if (host.ws === ws) {
+                friendRooms.delete(code);
+                break;
+            }
+        }
+    });
+}
+
+function handleLeaveQueue(ws, { userId }) {
+    const idx = waitingPlayers.findIndex(p => p.userId === userId || p.ws === ws);
+    if (idx !== -1) {
+        waitingPlayers.splice(idx, 1);
+        console.log(`User ${userId} left the queue.`);
+    }
+}
+
+function handleVerifySession(ws, { gameId }) {
+    const game = activeGames.get(gameId);
+    if (game) {
+        if (game.p1.ws === null || game.p1.ws.readyState !== 1) game.p1.ws = ws;
+        else if (game.p2.mode !== 'local' && (game.p2.ws === null || game.p2.ws.readyState !== 1)) game.p2.ws = ws;
+
+        ws.send(JSON.stringify({ 
+            type: 'SESSION_VALID', 
+            payload: { gameId, yourRole: (game.p1.ws === ws ? 'p1' : 'p2') } 
+        }));
+    } else {
+        ws.send(JSON.stringify({ type: 'SESSION_INVALID' }));
+    }
+}
+
+async function handleAuth(ws, payload, type) {
+    let result;
+    const authData = {
+        username: payload.username,
+        password: payload.pass || payload.password,
+        gender: payload.gender,
+        dob: payload.dob
+    };
+
+    if (type === 'register') {
+        result = await PlayerModel.register(authData);
+        if (result.success) {
+            const login = await PlayerModel.login(authData.username, authData.password);
+            ws.send(JSON.stringify({ type: 'AUTH_SUCCESS', payload: { user: login.user } }));
+        }
+    } else {
+        result = await PlayerModel.login(authData.username, authData.password);
+        if (result.success) {
+            ws.send(JSON.stringify({ type: 'AUTH_SUCCESS', payload: { user: result.user } }));
+        }
+    }
+
+    if (result && !result.success) {
+        ws.send(JSON.stringify({ type: 'ERROR', payload: { message: result.error } }));
+    }
+}
+
+async function handleStartGame(ws, { mode, username, userId, roomCode, action }) {
+    if (mode === 'local') {
+        const gameId = `cpu_${Date.now()}`;
+        const gameState = {
+            id: gameId,
+            mode: 'local',
+            p1: { userId: userId || 1, username, stats: { anger: 50, satisfaction: 25, confidence: 0 }, score: 0, move: null, ws },
+            p2: { username: 'CPU', stats: { anger: 50, satisfaction: 25, confidence: 0 }, score: 0, move: null },
+            status: 'playing'
+        };
+        activeGames.set(gameId, gameState);
+        ws.send(JSON.stringify({ 
+            type: 'GAME_STARTED', 
+            payload: { ...gameState, yourRole: 'p1' } 
+        }));
+    } 
+    else if (mode === 'friend') {
+        if (action === 'create') {
+            const code = Math.floor(1000 + Math.random() * 9000).toString();
+            friendRooms.set(code, { ws, userId, username });
+            ws.send(JSON.stringify({ 
+                type: 'ROOM_CREATED', 
+                payload: { roomCode: code } 
+            }));
+        } else if (action === 'join') {
+            const host = friendRooms.get(roomCode);
+            if (host && host.userId !== userId) {
+                friendRooms.delete(roomCode);
+                initOnlineGame(host, { ws, userId, username }, 'friend');
+            } else {
+                ws.send(JSON.stringify({ type: 'ERROR', payload: { message: "Room not found or invalid code!" } }));
+            }
+        }
+    }
+    else if (mode === 'online') {
+        const alreadyWaiting = waitingPlayers.find(p => p.userId === userId);
+        if (alreadyWaiting) {
+            ws.send(JSON.stringify({ type: 'WAITING_FOR_OPPONENT' }));
+            return;
+        }
+
+        if (waitingPlayers.length > 0 && waitingPlayers[0].userId !== userId) {
+            const opponent = waitingPlayers.shift();
+            initOnlineGame(opponent, { ws, userId, username }, 'online');
+        } else {
+            waitingPlayers.push({ ws, userId, username });
+            ws.send(JSON.stringify({ type: 'WAITING_FOR_OPPONENT' }));
+        }
+    }
+}
+
+async function initOnlineGame(p1Data, p2Data, mode) {
+    const gameId = `match_${Date.now()}`;
+    const gameState = {
+        id: gameId,
+        mode,
+        p1: { userId: p1Data.userId, username: p1Data.username, stats: { anger: 50, satisfaction: 25, confidence: 0 }, score: 0, move: null, ws: p1Data.ws },
+        p2: { userId: p2Data.userId, username: p2Data.username, stats: { anger: 50, satisfaction: 25, confidence: 0 }, score: 0, move: null, ws: p2Data.ws },
+        status: 'playing'
+    };
+
+    activeGames.set(gameId, gameState);
+
+    try {
+        await pool.query(
+            'INSERT INTO matches (match_id, p1_id, p2_id, game_mode) VALUES (?, ?, ?, ?)',
+            [gameId, p1Data.userId, p2Data.userId, mode]
+        );
+    } catch (err) {
+        console.error("Match Start DB Error:", err);
+    }
+
+    const startP1 = JSON.stringify({ type: 'GAME_STARTED', payload: { ...gameState, yourRole: 'p1' } });
+    const startP2 = JSON.stringify({ type: 'GAME_STARTED', payload: { ...gameState, yourRole: 'p2' } });
+
+    if (p1Data.ws) p1Data.ws.send(startP1);
+    if (p2Data.ws) p2Data.ws.send(startP2);
+}
+
+async function handlePlayerMove(ws, { gameId, move, userId }) {
+    const game = activeGames.get(gameId);
+    if (!game) return;
+
+    if (game.mode === 'local') {
+        const p1Move = move;
+        const p2Move = getCPUMove(game.p2.stats);
+        const result = getRoundResult(p1Move, p2Move);
+
+        ws.send(JSON.stringify({ 
+            type: 'ROUND_RESULT', 
+            payload: { p1Move, p2Move, result, yourRole: 'p1', p1Score: game.p1.score, p2Score: game.p2.score } 
+        }));
+
+        if (result === 'draw') {
+            setTimeout(() => ws.send(JSON.stringify({ type: 'RESET_ROUND' })), 2000);
+        } else if (result === 'p2') {
+            // CPU won the clash, so CPU performs its action after the animation
+            setTimeout(() => {
+                const action = getCPUAction(game.p2.stats);
+                processAction(game, 'p2', action);
+                ws.send(JSON.stringify({ 
+                    type: 'UPDATE_UI', 
+                    payload: { p1Score: game.p1.score, p1Stats: game.p1.stats, p2Score: game.p2.score, p2Stats: game.p2.stats, cpuAction: action } 
+                }));
+                
+                // NEW: Check for satisfaction victory first, then score
+                if (game.p2.stats.satisfaction >= 100) {
+                    handleGameOver(null, 'p2_satisfaction', game);
+                } else if (game.p2.score >= 100) {
+                    handleGameOver(null, 'p2_win', game);
+                }
+            }, 2000);
+        }
+        // FIXED: If result === 'p1', we send nothing. 
+        // We wait for the frontend to show the action buttons and send 'SUBMIT_ACTION'.
+    } else {
+        const player = (game.p1.userId === userId) ? game.p1 : game.p2;
+        if (player) player.move = move;
+
+        if (game.p1.move && game.p2.move) {
+            const result = getRoundResult(game.p1.move, game.p2.move);
+            const res1 = JSON.stringify({ type: 'ROUND_RESULT', payload: { p1Move: game.p1.move, p2Move: game.p2.move, result, yourRole: 'p1' } });
+            const res2 = JSON.stringify({ type: 'ROUND_RESULT', payload: { p1Move: game.p1.move, p2Move: game.p2.move, result, yourRole: 'p2' } });
+            
+            if(game.p1.ws) game.p1.ws.send(res1);
+            if(game.p2.ws) game.p2.ws.send(res2);
+
+            if (result === 'draw') {
+                game.p1.move = null; game.p2.move = null;
+                setTimeout(() => {
+                    const reset = JSON.stringify({ type: 'RESET_ROUND' });
+                    if(game.p1.ws) game.p1.ws.send(reset); 
+                    if(game.p2.ws) game.p2.ws.send(reset);
+                }, 2000);
+            }
+        }
+    }
+}
+
+async function handlePlayerAction(ws, { gameId, action, userId }) {
+    const game = activeGames.get(gameId);
+    if (!game || !action) return;
+
+    const winnerKey = (game.mode === 'local') ? 'p1' : (game.p1.userId === userId ? 'p1' : 'p2');
+    processAction(game, winnerKey, action);
+
+    const updatePayload = JSON.stringify({ 
+        type: 'UPDATE_UI', 
+        payload: { p1Score: game.p1.score, p1Stats: game.p1.stats, p2Score: game.p2.score, p2Stats: game.p2.stats, actorRole: winnerKey, onlineAction: action } 
+    });
+
+    if (game.mode === 'local') ws.send(updatePayload);
+    else {
+        if(game.p1.ws) game.p1.ws.send(updatePayload);
+        if(game.p2.ws) game.p2.ws.send(updatePayload);
+    }
+
+    game.p1.move = null; game.p2.move = null;
+    
+    // NEW: Check for satisfaction victory first, then score
+    if (game[winnerKey].stats.satisfaction >= 100) {
+        setTimeout(() => handleGameOver(null, winnerKey === 'p1' ? 'p1_satisfaction' : 'p2_satisfaction', game), 1500);
+    } else if (game[winnerKey].score >= 100) {
+        setTimeout(() => handleGameOver(null, winnerKey === 'p1' ? 'p1_win' : 'p2_win', game), 1500);
+    }
+}
+
+function processAction(game, winnerKey, action) {
+    const loserKey = winnerKey === 'p1' ? 'p2' : 'p1';
+    const winner = game[winnerKey];
+    const loser = game[loserKey];
+
+    const points = calculateStateChange(action, winner.stats) || 0;
+    winner.score += points;
+
+    const winDeltas = getStatDeltas('winner', action);
+    winner.stats.anger = clamp(winner.stats.anger + winDeltas.anger);
+    winner.stats.satisfaction = clamp(winner.stats.satisfaction + winDeltas.satisfaction);
+    winner.stats.confidence = clamp(winner.stats.confidence + winDeltas.confidence);
+
+    const loseDeltas = getStatDeltas('loser', action);
+    loser.stats.anger = clamp(loser.stats.anger + loseDeltas.anger);
+    loser.stats.satisfaction = clamp(loser.stats.satisfaction + loseDeltas.satisfaction);
+    loser.stats.confidence = clamp(loser.stats.confidence + loseDeltas.confidence);
+}
+
+async function handleGameOver(ws, reason, game) {
+    if (!game) return;
+
+    let winnerId = null;
+    let loserId = null;
+    let finalReason = reason;
+
+    if (reason === 'forfeit') {
+        const p1Forfeited = (ws === game.p1.ws);
+        if (p1Forfeited) {
+            winnerId = (game.mode !== 'local' ? game.p2.userId : null);
+            loserId = game.p1.userId;
+            finalReason = 'p1_forfeit';
+        } else {
+            winnerId = game.p1.userId;
+            loserId = (game.mode !== 'local' ? game.p2.userId : null);
+            finalReason = 'p2_forfeit';
+        }
+    // NEW: Include satisfaction reasons in the routing
+    } else if (reason === 'p1_win' || reason === 'p1_satisfaction') {
+        winnerId = game.p1.userId;
+        loserId = (game.mode !== 'local') ? game.p2.userId : null;
+    } else if (reason === 'p2_win' || reason === 'p2_satisfaction') {
+        winnerId = (game.mode !== 'local') ? game.p2.userId : null;
+        loserId = game.p1.userId;
+    }
+
+    try {
+        if (game.mode !== 'local') {
+            await pool.query(
+                'UPDATE matches SET winner_id = ?, p1_score = ?, p2_score = ? WHERE match_id = ?', 
+                [winnerId, game.p1.score, game.p2.score, game.id]
+            );
+        }
+
+        if (winnerId && winnerId !== 1) {
+            await pool.query('UPDATE players SET wins = wins + 1 WHERE player_id = ?', [winnerId]);
+        }
+        if (loserId && loserId !== 1) {
+            await pool.query('UPDATE players SET losses = losses + 1 WHERE player_id = ?', [loserId]);
+        }
+
+        if (game.p1.ws) await syncPlayerStats(game.p1.ws, game.p1.userId);
+        if (game.mode !== 'local' && game.p2.ws) {
+            await syncPlayerStats(game.p2.ws, game.p2.userId);
+        }
+
+    } catch (err) {
+        console.error("Game Over DB Update Error:", err);
+    }
+    
+    const overMsg = JSON.stringify({ type: 'GAME_OVER', payload: { reason: finalReason } });
+    if (game.p1.ws && game.p1.ws.readyState === 1) game.p1.ws.send(overMsg); 
+    if (game.mode !== 'local' && game.p2.ws && game.p2.ws.readyState === 1) game.p2.ws.send(overMsg); 
+
+    activeGames.delete(game.id);
+}
+
+module.exports = { handleSocketConnection };

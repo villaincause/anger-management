@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cloudinary Asset Uploader</title>
+</head>
+<body style="background: #FFF1D3; font-family: sans-serif; padding: 50px;">
+    <h2>Cloudinary Asset Uploader</h2>
+    
+    <p style="font-size: 0.9em; color: #666;">Supports: Images (.jpg, .png) and Audio (.mp3, .wav)</p>
+    
+    <!-- Input accepts both image and audio -->
+    <input type="file" id="fileItem" accept="image/*,audio/*" multiple>
+    
+    <button onclick="startUpload()">Upload Assets</button>
+    
+    <div id="output" style="margin-top: 20px; white-space: pre-wrap; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; min-height: 100px;"></div>
+
+    <!-- Make sure this file name is exactly correct on your computer -->
+    <script src="upload_assets.js"></script>
+
+    <script>
+    async function startUpload() {
+        const fileInput = document.getElementById('fileItem');
+        const output = document.getElementById('output');
+        const files = fileInput.files; 
+
+        if (files.length === 0) {
+            alert("Please select files to upload first!");
+            return;
+        }
+
+        output.innerHTML = "--- STARTING BATCH UPLOAD ---\n\n";
+
+        for (let file of files) {
+            output.innerHTML += `Processing: ${file.name}...\n`;
+            
+            // "BackgroundMusic.mp3" -> "BackgroundMusic"
+            const publicId = file.name.substring(0, file.name.lastIndexOf('.')) || file.name; 
+            
+            try {
+                // Calling the now-corrected 'uploadImage' function
+                const url = await uploadImage(file, publicId);
+                output.innerHTML += `✅ Success: ${url}\n\n`;
+            } catch (err) {
+                // Displays the specific error (e.g., "Invalid file format")
+                output.innerHTML += `❌ Error: ${err.message}\n\n`;
+                console.error(err);
+            }
+        }
+        output.innerHTML += "--- ALL UPLOADS FINISHED ---";
+    }
+    </script>
+</body>
+</html>
