@@ -35,6 +35,8 @@
                     <button id="btn-online" class="menu-btn">Online Matchmaking</button>
                     <button id="btn-friend-menu" class="menu-btn friend-btn">Play with Friend</button>
 
+                    <button id="btn-help" class="text-link" style="font-size: 1.1rem; margin-top: 15px; letter-spacing: 1px;">How to Play?</button>
+
                     <div id="friend-room-options" class="flex-column gap-15 hidden">
                         
                         <div id="room-code-display" class="room-card hidden">
@@ -197,6 +199,37 @@
                         <button type="submit" class="menu-btn">Sign Up</button>
                     </form>
                     <p>Already have an account? <a href="#" id="link-to-login">Login here</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="help-modal" class="modal hidden">
+            <div class="modal-content help-modal-box">
+                <span id="close-help" class="close-modal">&times;</span>
+                
+                <h2>How To Play</h2>
+                <div class="help-scroll-container">
+                    <h3>🔄 Phase 1: The Clash</h3>
+                    <p>Every turn begins with a synchronized <strong>Rock-Paper-Scissors</strong> selection. Win the clash phase to gain offensive initiative.</p>
+
+                    <h3>💥 Phase 2: The Strike</h3>
+                    <p>The clash winner selects an aggressive follow-up strike: <strong>Punch, Kick, or Slap</strong> to inflict immediate scoring hits and warp player emotional states.</p>
+
+                    <h3>🧠 The Psychorithm</h3>
+                    <p>Manage three shifting neurological attribute meters during combat:</p>
+                    <ul>
+                        <li><strong>Anger:</strong> Spikes when taking hits. High anger scales up your attack thresholds.</li>
+                        <li><strong>Satisfaction:</strong> Expands upon landing clean tactical choices. Max out this bar to secure a victory.</li>
+                        <li><strong>Confidence:</strong> Generated through balanced defensive responses, mitigating damage velocities.</li>
+                    </ul>
+
+                    <h3>🏆 Win Conditions</h3>
+                    <p>A match instantly concludes when a fighter meets any of these criteria:</p>
+                    <ul>
+                        <li>Accumulates <strong>100 combat points</strong> via strikes.</li>
+                        <li>Achieves <strong>100% Satisfaction</strong> (Instant Strategic Synergy Win).</li>
+                        <li>The opponent chooses to <strong>Give Up</strong>.</li>
+                    </ul>
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@
 const homeScreen = document.getElementById('home-screen');
 const gameScreen = document.getElementById('game-screen');
 const authModal = document.getElementById('auth-modal');
+const helpModal = document.getElementById('help-modal'); // Help Modal Selector
 const homeNotif = document.getElementById('home-notification');
 
 const loggedOutView = document.getElementById('logged-out-view');
@@ -18,7 +19,9 @@ const btnOnline = document.getElementById('btn-online');
 const btnGiveUp = document.getElementById('btn-give-up');
 const btnShowAuth = document.getElementById('btn-show-login');
 const btnLogout = document.getElementById('btn-logout');
+const btnHelp = document.getElementById('btn-help'); // How to Play Trigger Selector
 const closeModal = document.querySelector('.close-modal');
+const closeHelp = document.getElementById('close-help'); // Help Modal Close Selector
 
 const btnFriendMenu = document.getElementById('btn-friend-menu');
 const friendOptions = document.getElementById('friend-room-options');
@@ -57,6 +60,7 @@ function showView(viewName) {
     if (!homeScreen || !gameScreen) return;
     homeScreen.classList.add('hidden');
     gameScreen.classList.add('hidden');
+    if (helpModal) helpModal.classList.add('hidden'); // Clear overlay layers on transitions
 
     if (viewName === 'home') {
         homeScreen.classList.remove('hidden');
@@ -69,6 +73,7 @@ function showView(viewName) {
         if (btnLocal) btnLocal.classList.remove('hidden');
         if (btnOnline) btnOnline.classList.remove('hidden');
         if (btnFriendMenu) btnFriendMenu.classList.remove('hidden');
+        if (btnHelp) btnHelp.classList.remove('hidden'); // Ensure trigger shows on home default
         
         document.querySelector('.game-logo').innerText = "ANGER MANAGEMENT";
     } else if (viewName === 'game') {
@@ -100,16 +105,7 @@ function updateAuthUI(user) {
     }
 }
 
-function updateLiveRecord(wins, losses) {
-    if (currentUser) {
-        currentUser.wins = wins;
-        currentUser.losses = losses;
-        localStorage.setItem('rps_user_session', JSON.stringify(currentUser));
-        if (displayRecord) displayRecord.innerText = `Record: ${wins}W - ${losses}L`;
-    }
-}
-
-// 4. Event Listeners
+//4. Event Listeners
 
 // FRIEND ROOM NAVIGATION
 if (btnFriendMenu) {
@@ -121,6 +117,7 @@ if (btnFriendMenu) {
         btnLocal.classList.add('hidden');
         btnOnline.classList.add('hidden');
         btnFriendMenu.classList.add('hidden');
+        if (btnHelp) btnHelp.classList.add('hidden'); // Clean home interface when nesting menus
         
         friendOptions.classList.remove('hidden');
         if (btnCreateRoom) btnCreateRoom.classList.remove('hidden');
@@ -135,6 +132,20 @@ if (btnBackMenu) {
         btnLocal.classList.remove('hidden');
         btnOnline.classList.remove('hidden');
         btnFriendMenu.classList.remove('hidden');
+        if (btnHelp) btnHelp.classList.remove('hidden');
+    });
+}
+
+// HOW TO PLAY HANDLERS
+if (btnHelp && helpModal) {
+    btnHelp.addEventListener('click', () => {
+        helpModal.classList.remove('hidden');
+    });
+}
+
+if (closeHelp && helpModal) {
+    closeHelp.addEventListener('click', () => {
+        helpModal.classList.add('hidden');
     });
 }
 

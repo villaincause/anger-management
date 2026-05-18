@@ -91,7 +91,7 @@
     color: #FFF1D3;
 }
 
-/* 5. Auth Modal Styling */
+/* 5. Auth & Help Modal Styling */
 .modal {
     position: fixed;
     top: 0; left: 0;
@@ -120,6 +120,53 @@ form .menu-btn {
     position: relative;
     border: 4px solid #4A2C2A;
     box-shadow: 0 15px 0px rgba(0,0,0,0.1);
+}
+
+/* Specific styling for the Help Modal expansion */
+.help-modal-box {
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.help-modal-box h2 {
+    color: #4A2C2A;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    font-weight: 900;
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+.help-scroll-container {
+    overflow-y: auto;
+    padding-right: 10px;
+    color: #4A2C2A;
+}
+
+.help-scroll-container h3 {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.help-scroll-container p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.help-scroll-container ul {
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+.help-scroll-container li {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 5px;
 }
 
 .close-modal {
@@ -273,6 +320,11 @@ form .menu-btn {
     text-align: center;
     font-size: 0.9rem;
     text-decoration: none;
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.text-link:hover {
+    opacity: 0.8;
 }
 
 #btn-back-menu {
@@ -358,6 +410,15 @@ form .menu-btn {
     .modal-content {
         padding: 24px 20px;
         border-radius: 18px;
+    }
+
+    .help-modal-box {
+        max-height: 85vh;
+    }
+
+    .help-modal-box h2 {
+        font-size: 1.4rem;
+        margin-bottom: 12px;
     }
 
     .auth-form-container h2 {
